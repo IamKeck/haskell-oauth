@@ -48,9 +48,3 @@ createAuthHeader auth_base signature =
   in
     "OAuth " ++ intercalate ", " [(encode k) ++ "=\"" ++ (encode v) ++ "\""  | (k, v) <- auth_base_sorted]
 
-
-
-
-
-someFunc :: IO ()
-someFunc = putStrLn "someFunc"
