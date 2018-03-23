@@ -7,6 +7,7 @@ nonce = "kYjzVBB8Y0ZFabxSWbWovY3uYSQ2pTgmZeNu2VS4cg"
 timestamp = "1318622958"
 token = "370773112-GmHxMAgYyLbNEtIKZeRNFsMKPR9EyMZeS9weJAEb"
 consumer = "xvz1evFS4wEEPTGEFPHBog"
+key = TwitterKey consumer Main.consumerSecret token tokenSecret
 param = [ ("status", "Hello Ladies + Gentlemen, a signed OAuth request!"),
           ("include_entities", "true")
         ]
@@ -25,19 +26,19 @@ main :: IO ()
 main = hspec $ do
   describe "createHmacKey" $
     it "standard" $
-      createHmacKey consumerSecret  tokenSecret `shouldBe` "kAcSOqF21Fu85e7zjz7ZN2U4ZRhfV3WpwPAoE3Z7kBw&LswwdoUaIvS8ltyTt5jkRh4J50vUPVVHtR2YPi5kE"
+      createHmacKey key `shouldBe` "kAcSOqF21Fu85e7zjz7ZN2U4ZRhfV3WpwPAoE3Z7kBw&LswwdoUaIvS8ltyTt5jkRh4J50vUPVVHtR2YPi5kE"
   describe "createSignature" $
     it "standard" $
       let
-        key = createHmacKey consumerSecret tokenSecret
-        auth_base = createAuthBase consumer token nonce timestamp
+        hmac_key = createHmacKey key
+        auth_base = createAuthBase key nonce timestamp
       in
-        createSignature True url param auth_base key `shouldBe` signature
+        createSignature True url param auth_base hmac_key `shouldBe` signature
   describe "createAuthHeader" $
     it "standard" $
       let
-        key = createHmacKey consumerSecret tokenSecret
-        auth_base = createAuthBase consumer token nonce timestamp
+        hmac_key = createHmacKey key
+        auth_base = createAuthBase key nonce timestamp
       in
         createAuthHeader auth_base signature `shouldBe` authHeader
 

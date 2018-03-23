@@ -8,24 +8,30 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as CB
 import qualified Data.ByteString.Base64  as B64 (encode)
 
-createHmacKey :: String -> String -> String
-createHmacKey consumer_secret access_secret = (encode consumer_secret) ++ "&" ++ (encode access_secret)
+data TwitterKey = TwitterKey {consumerKey :: String,
+                              consumerSecret :: String,
+                              accessToken :: String,
+                              accessTokenSecret :: String} deriving Show
 
-createAuthBase :: String -> String -> String -> String -> [(String, String)]
-createAuthBase consumer token nonce timestamp = [
-  ("oauth_consumer_key", consumer),
+createHmacKey :: TwitterKey -> String
+createHmacKey key = (encode . consumerSecret $ key) ++ "&" ++
+                    (encode . accessTokenSecret $  key)
+
+createAuthBase :: TwitterKey -> String -> String -> [(String, String)]
+createAuthBase key nonce timestamp = [
+  ("oauth_consumer_key", consumerKey key),
   ("oauth_nonce", nonce),
   ("oauth_signature_method", "HMAC-SHA1"),
   ("oauth_timestamp", timestamp),
-  ("oauth_token", token),
+  ("oauth_token", accessToken key),
   ("oauth_version", "1.0")]
 
 
-createAuthBaseDefault :: String -> String -> IO [(String, String)]
-createAuthBaseDefault consumer token = do
+createAuthBaseDefault :: TwitterKey -> IO [(String, String)]
+createAuthBaseDefault key = do
   time <- show . floor . realToFrac <$> getPOSIXTime
   nonce <- show <$> randomRIO (0, 1.0 :: Float)
-  return $ createAuthBase consumer token nonce time
+  return $ createAuthBase key nonce time
 
 
 createSignature :: Bool -> String -> [(String, String)] -> [(String, String)] -> String -> String
