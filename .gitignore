@@ -1,0 +1,6 @@
+.stack-work/
+haskell-oauth.cabal
+*~
+*.iml
+.idea/
+out/
