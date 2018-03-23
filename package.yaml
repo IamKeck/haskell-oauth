@@ -42,6 +42,8 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - haskell-oauth
+    - http-conduit
+    - bytestring
 
 tests:
   haskell-oauth-test:
