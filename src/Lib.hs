@@ -25,7 +25,7 @@ createAuthBaseDefault :: String -> String -> IO [(String, String)]
 createAuthBaseDefault consumer token = do
   time <- show . floor . realToFrac <$> getPOSIXTime
   nonce <- show <$> randomRIO (0, 1.0 :: Float)
-  return $ createAuthBase consumer token time nonce
+  return $ createAuthBase consumer token nonce time
 
 
 createSignature :: Bool -> String -> [(String, String)] -> [(String, String)] -> String -> String
