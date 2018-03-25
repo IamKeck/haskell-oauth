@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Lib where
 import Network.URI.Encode (encode)
 import Data.Time.Clock.POSIX (getPOSIXTime)
@@ -7,6 +8,8 @@ import Data.HMAC
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as CB
 import qualified Data.ByteString.Base64  as B64 (encode)
+import Network.HTTP.Simple
+import Control.Monad.State.Lazy
 
 data TwitterKey = TwitterKey {consumerKey :: String,
                               consumerSecret :: String,
@@ -53,4 +56,22 @@ createAuthHeader auth_base signature =
     auth_base_sorted = sortOn fst $ ("oauth_signature", signature) :  auth_base
   in
     "OAuth " ++ intercalate ", " [(encode k) ++ "=\"" ++ (encode v) ++ "\""  | (k, v) <- auth_base_sorted]
+
+createRequest :: Bool -> String -> [(String, String)]
+                      -> [(String, String)] -> TwitterKey -> IO Request
+createRequest is_post url query_param post_param key = do
+    auth_base <- createAuthBaseDefault key
+    let param = query_param ++ post_param
+    let signature = createSignature is_post url param auth_base $ createHmacKey key
+    let auth_header = createAuthHeader auth_base signature
+    execState (setRequest auth_header) <$> parseRequest url
+    where
+      setRequest :: String -> State Request ()
+      setRequest auth_header = do
+        let bs_query_param = [(CB.pack f, Just . CB.pack $ s) | (f, s) <- query_param]
+        modify $ addRequestHeader "Authorization" $ CB.pack auth_header
+        modify $ setRequestQueryString bs_query_param
+
+
+
 

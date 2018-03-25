@@ -31,6 +31,8 @@ library:
     - time
     - random
     - base64-bytestring
+    - http-conduit
+    - mtl
 
 executables:
   haskell-oauth-exe:
