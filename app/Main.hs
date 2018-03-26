@@ -18,11 +18,6 @@ import Data.Aeson (decode)
 import Data.Aeson.Types
 import qualified Data.Text as T
 
-{-
-w8r = head . B.unpack . CB.pack $ "\r" :: Word8
-w8n = head . B.unpack . CB.pack $ "\n" :: Word8
--}
-
 handler :: B.ByteString -> IO ()
 handler d = case tweet of
   Nothing -> print $ "not a tweet: "  <> d
@@ -33,11 +28,6 @@ handler d = case tweet of
       String s -> Just s
       otherwise -> Nothing
     tweet = (decode lazy_data :: Maybe Object) >>= HM.lookup "text" >>= take_string
-
-splitOn :: B.ByteString -> (B.ByteString, B.ByteString)
-splitOn buf = case CB.breakSubstring (CB.pack "\r\n") buf of
-  (remaining, "") -> ("", remaining)
-  (matched, remaining) -> (matched, B.drop 2 remaining)
 
 splitter :: ConduitM B.ByteString B.ByteString IO ()
 splitter = inner "" where
