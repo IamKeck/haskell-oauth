@@ -25,7 +25,7 @@ w8n = head . B.unpack . CB.pack $ "\n" :: Word8
 
 handler :: B.ByteString -> IO ()
 handler d = case tweet of
-  Nothing -> putStrLn "not a tweet"
+  Nothing -> print $ "not a tweet: "  <> d
   Just t -> putStrLn $ "tweet:" <> T.unpack t
   where
     lazy_data = LB.fromStrict d
