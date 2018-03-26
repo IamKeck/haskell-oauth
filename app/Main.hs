@@ -8,7 +8,7 @@ import System.Environment
 import qualified Data.ByteString.Char8 as CB
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
-import Data.Conduit (Sink, await, ConduitM, Void)
+import Data.Conduit (Sink, await, yield, ConduitM, Void, (.|))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Monoid ((<>))
 import Data.Word
@@ -39,17 +39,25 @@ splitOn buf = case CB.breakSubstring (CB.pack "\r\n") buf of
   (remaining, "") -> ("", remaining)
   (matched, remaining) -> (matched, B.drop 2 remaining)
 
-sink :: (Monad m, MonadIO m) => B.ByteString -> (B.ByteString -> IO ()) -> Response () -> ConduitM B.ByteString Void m ()
-sink buffer handler response =
+splitter :: ConduitM B.ByteString B.ByteString IO ()
+splitter = inner "" where
+  inner buf = do
+    md <- await
+    case md of
+      Nothing -> return ()
+      Just d -> case CB.breakSubstring (CB.pack "\r\n") (buf <> d) of
+        (remaining, "") -> inner remaining
+        (matched, remaining) -> yield matched >> inner (B.drop 2 remaining)
+
+sink :: (Monad m, MonadIO m) => (B.ByteString -> IO ()) -> Response () -> ConduitM B.ByteString Void m ()
+sink handler response =
   if getResponseStatusCode response > 300 then
     liftIO $ print "error"
   else do
     b <- await
     case b of
       Just t ->
-        case splitOn $ buffer <> t of
-          ("", remaining) -> sink remaining handler response
-          (result, remaining) -> (liftIO $ handler result) >> sink remaining handler response
+          (liftIO $ handler t) >> sink handler response
       Nothing -> return ()
 
 main :: IO ()
@@ -58,7 +66,7 @@ main = do
   let param = [("replies", "all")]
   key <- TwitterKey <$> (getEnv "CK") <*> (getEnv "CS") <*> (getEnv "AT") <*> (getEnv "AS")
   request <- createRequest False url param [] key
-  httpSink request $ sink "" handler
+  httpSink request $ \res -> splitter .| (sink handler res)
   print "done"
 
 
