@@ -6,13 +6,60 @@ import Lib
 import Network.HTTP.Simple
 import System.Environment
 import qualified Data.ByteString.Char8 as CB
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as LB
+import Data.Conduit (Sink, await, ConduitM, Void)
+import Control.Monad.IO.Class (MonadIO, liftIO)
+import Data.Monoid ((<>))
+import Data.Word
+import Debug.Trace
+import qualified Data.HashMap.Strict as HM
+import Data.Aeson (decode)
+import Data.Aeson.Types
+import qualified Data.Text as T
+
+{-
+w8r = head . B.unpack . CB.pack $ "\r" :: Word8
+w8n = head . B.unpack . CB.pack $ "\n" :: Word8
+-}
+
+handler :: B.ByteString -> IO ()
+handler d = case tweet of
+  Nothing -> putStrLn "not a tweet"
+  Just t -> putStrLn $ "tweet:" <> T.unpack t
+  where
+    lazy_data = LB.fromStrict d
+    take_string v = case v of
+      String s -> Just s
+      otherwise -> Nothing
+    tweet = (decode lazy_data :: Maybe Object) >>= HM.lookup "text" >>= take_string
+
+splitOn :: B.ByteString -> (B.ByteString, B.ByteString)
+splitOn buf = case CB.breakSubstring (CB.pack "\r\n") buf of
+  (remaining, "") -> ("", remaining)
+  (matched, remaining) -> (matched, B.drop 2 remaining)
+
+sink :: (Monad m, MonadIO m) => B.ByteString -> (B.ByteString -> IO ()) -> Response () -> ConduitM B.ByteString Void m ()
+sink buffer handler response =
+  if getResponseStatusCode response > 300 then
+    liftIO $ print "error"
+  else do
+    b <- await
+    case b of
+      Just t ->
+        case splitOn $ buffer <> t of
+          ("", remaining) -> sink remaining handler response
+          (result, remaining) -> (liftIO $ handler result) >> sink remaining handler response
+      Nothing -> return ()
 
 main :: IO ()
 main = do
-  let url = "https://api.twitter.com/1.1/statuses/home_timeline.json"
-  let param = [("count", "5"), ("exclude_replies", "false")]
+  let url = "https://userstream.twitter.com/1.1/user.json"
+  let param = [("replies", "all")]
   key <- TwitterKey <$> (getEnv "CK") <*> (getEnv "CS") <*> (getEnv "AT") <*> (getEnv "AS")
-  createRequest False url param [] key >>= httpBS >>= print . getResponseBody
+  request <- createRequest False url param [] key
+  httpSink request $ sink "" handler
+  print "done"
 
 
 

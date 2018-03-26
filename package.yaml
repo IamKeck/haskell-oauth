@@ -46,6 +46,11 @@ executables:
     - haskell-oauth
     - http-conduit
     - bytestring
+    - conduit
+    - aeson
+    - unordered-containers
+    - text
+
 
 tests:
   haskell-oauth-test:
